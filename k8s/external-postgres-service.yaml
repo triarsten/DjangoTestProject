@@ -1,0 +1,42 @@
+# =============================================================================
+# Externe PostgreSQL-Datenbank (Docker-Host: 192.168.178.48:5432)
+#
+# HINWEIS: Kubernetes ExternalName Services unterstützen nur DNS-Namen,
+# keine IP-Adressen. Für eine rohe IP wird daher die Kombination aus
+# headless Service + Endpoints verwendet – das ist die korrekte K8s-Methode.
+#
+# Die App verbindet sich über: postgres://user:pass@postgres:5432/dbname
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: staging
+  labels:
+    app: postgres
+    environment: staging
+    tier: database
+spec:
+  # Kein Selector: Traffic wird manuell über das Endpoints-Objekt geleitet
+  clusterIP: None  # Headless Service
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: postgres          # Muss identisch mit dem Service-Namen sein
+  namespace: staging
+  labels:
+    app: postgres
+    environment: staging
+subsets:
+  - addresses:
+      - ip: 192.168.178.48  # Docker-Host mit PostgreSQL
+    ports:
+      - name: postgres
+        port: 5432
+        protocol: TCP

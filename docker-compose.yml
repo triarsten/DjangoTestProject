@@ -1,0 +1,95 @@
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Datenbank
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-djangotestproject}
+      POSTGRES_USER: ${POSTGRES_USER:-django}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-django}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-django} -d ${POSTGRES_DB:-djangotestproject}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Django Anwendung
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-django}:${POSTGRES_PASSWORD:-django}@db:5432/${POSTGRES_DB:-djangotestproject}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Hot-Reload im Dev-Betrieb: Quellcode mounten
+      - .:/app
+      # Named Volume für Static Files
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    # Für lokale Entwicklung mit Auto-Reload
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # ---------------------------------------------------------------------------
+  # Lokale Observability-Hilfsdienste (optional – ggf. auf Homelab zeigen)
+  # ---------------------------------------------------------------------------
+
+  # OpenTelemetry Collector (Proxy zu Homelab Tempo/Loki/Prometheus)
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./docker/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Collector Metrics
+      - "8889:8889"   # Prometheus Scrape (Collector-eigene Metrics)
+    profiles:
+      - observability
+
+  # Prometheus (lokal, scrapt /metrics vom Django-Container)
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - web
+    profiles:
+      - observability
+
+volumes:
+  postgres_data:
+  static_files:
+  media_files:
+  prometheus_data:

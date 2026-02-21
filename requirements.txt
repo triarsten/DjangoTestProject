@@ -1,0 +1,37 @@
+# Django
+Django==5.1.6
+django-environ==0.12.0
+
+# Database
+psycopg2-binary==2.9.10
+
+# WSGI Server
+gunicorn==23.0.0
+
+# OpenTelemetry - Core
+opentelemetry-api==1.30.0
+opentelemetry-sdk==1.30.0
+
+# OpenTelemetry - Exporters
+opentelemetry-exporter-otlp-proto-grpc==1.30.0
+opentelemetry-exporter-otlp-proto-http==1.30.0
+opentelemetry-exporter-prometheus==0.51b0
+
+# OpenTelemetry - Instrumentation
+opentelemetry-instrumentation-django==0.51b0
+opentelemetry-instrumentation-psycopg2==0.51b0
+opentelemetry-instrumentation-logging==0.51b0
+opentelemetry-instrumentation-requests==0.51b0
+opentelemetry-instrumentation-urllib3==0.51b0
+
+# Logging (Loki)
+python-logging-loki==0.3.1
+python-json-logger==2.0.7
+
+# Prometheus metrics endpoint
+django-prometheus==2.3.1
+
+# Utilities
+whitenoise==6.8.2
+
+

@@ -1,0 +1,55 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+  resourcedetection:
+    detectors: [env, docker]
+    timeout: 5s
+
+exporters:
+  # Traces → Tempo (Homelab)
+  otlp/tempo:
+    endpoint: ${TEMPO_ENDPOINT:-tempo:4317}
+    tls:
+      insecure: true
+
+  # Logs → Loki (Homelab)
+  loki:
+    endpoint: ${LOKI_ENDPOINT:-http://loki:3100/loki/api/v1/push}
+    default_labels_enabled:
+      exporter: false
+      job: true
+
+  # Metrics → Prometheus Remote Write (Homelab)
+  prometheusremotewrite:
+    endpoint: ${PROMETHEUS_REMOTE_WRITE_URL:-http://prometheus:9090/api/v1/write}
+
+  # Debug-Ausgabe (lokal)
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheusremotewrite, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [loki, debug]

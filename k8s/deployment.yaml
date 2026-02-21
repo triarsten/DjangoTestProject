@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: djangotestproject
+  namespace: staging
+  labels:
+    app: djangotestproject
+    environment: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: djangotestproject
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-Downtime Deployment
+  template:
+    metadata:
+      labels:
+        app: djangotestproject
+        environment: staging
+    spec:
+      # Graceful Shutdown: warte auf Gunicorn graceful-timeout
+      terminationGracePeriodSeconds: 40
+
+      # Pods auf verschiedene Nodes verteilen (falls vorhanden)
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: djangotestproject
+
+      containers:
+        - name: app
+          # Tag wird durch die CI/CD-Pipeline mit dem Git-SHA überschrieben
+          image: ghcr.io/triarsten/djangotestproject/app:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          # Secrets aus django-secrets (kubectl create secret generic django-secrets ...)
+          envFrom:
+            - secretRef:
+                name: django-secrets
+
+          # Statische Konfiguration (kein Secret)
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: PORT
+              value: "8000"
+            # DATABASE_URL kommt aus django-secrets, zeigt auf den postgres ExternalName Service
+            # Beispiel: postgres://user:pass@postgres:5432/djangotestproject
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # Sicherheit: Container nicht als root
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Django schreibt .pyc etc.
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
+      securityContext:
+        fsGroup: 1000
