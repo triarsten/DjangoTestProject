@@ -73,9 +73,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------------------------------
 # Database (PostgreSQL)
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": env.db("DATABASE_URL")
-}
+DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DATABASES["default"]["OPTIONS"] = {
     "connect_timeout": 10,
@@ -85,7 +83,9 @@ DATABASES["default"]["OPTIONS"] = {
 # Password validation
 # ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -136,8 +136,8 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-         "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-         "format": "%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d"
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d",
         },
         "verbose": {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",

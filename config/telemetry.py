@@ -4,6 +4,7 @@ OpenTelemetry bootstrap für Traces (Tempo), Metrics (Prometheus) und Logs (Loki
 Wird in manage.py und wsgi.py vor dem Django-Start aufgerufen.
 Aktiviert wird es über die Umgebungsvariable OTEL_ENABLED=true.
 """
+
 import logging
 import os
 
@@ -34,19 +35,26 @@ def _configure_tracing() -> None:
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     if not endpoint:
-        logger.warning("OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt – Traces werden verworfen")
+        logger.warning(
+            "OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt – Traces werden verworfen"
+        )
         return
 
-    resource = Resource.create({
-        SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "djangotestproject"),
-        SERVICE_VERSION: os.environ.get("OTEL_SERVICE_VERSION", "0.1.0"),
-        "deployment.environment": os.environ.get("ENVIRONMENT", "production"),
-    })
+    resource = Resource.create(
+        {
+            SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "djangotestproject"),
+            SERVICE_VERSION: os.environ.get("OTEL_SERVICE_VERSION", "0.1.0"),
+            "deployment.environment": os.environ.get("ENVIRONMENT", "production"),
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
     try:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+
         exporter = OTLPSpanExporter(endpoint=endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         logger.info("Trace-Exporter (OTLP/gRPC) → %s", endpoint)
@@ -78,11 +86,16 @@ def _configure_metrics() -> None:
         return
 
     try:
-        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+            OTLPMetricExporter,
+        )
+
         exporter = OTLPMetricExporter(endpoint=endpoint)
         reader = PeriodicExportingMetricReader(exporter, export_interval_millis=15000)
         provider = MeterProvider(
-            resource=Resource.create({SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "djangotestproject")}),
+            resource=Resource.create(
+                {SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "djangotestproject")}
+            ),
             metric_readers=[reader],
         )
         metrics.set_meter_provider(provider)
@@ -110,7 +123,9 @@ def _configure_loki_logging() -> None:
             auth=(
                 os.environ.get("LOKI_USERNAME", ""),
                 os.environ.get("LOKI_PASSWORD", ""),
-            ) if os.environ.get("LOKI_USERNAME") else None,
+            )
+            if os.environ.get("LOKI_USERNAME")
+            else None,
             version="1",
         )
         handler.setLevel(logging.INFO)
@@ -126,6 +141,7 @@ def _instrument_django() -> None:
     """Auto-Instrumentierung für Django, DB und HTTP-Clients."""
     try:
         from opentelemetry.instrumentation.django import DjangoInstrumentor
+
         DjangoInstrumentor().instrument()
         logger.debug("Django-Instrumentierung aktiv")
     except Exception as exc:
@@ -133,6 +149,7 @@ def _instrument_django() -> None:
 
     try:
         from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
         Psycopg2Instrumentor().instrument()
         logger.debug("Psycopg2-Instrumentierung aktiv")
     except Exception as exc:
@@ -140,6 +157,7 @@ def _instrument_django() -> None:
 
     try:
         from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
         RequestsInstrumentor().instrument()
         logger.debug("Requests-Instrumentierung aktiv")
     except Exception as exc:
@@ -147,6 +165,7 @@ def _instrument_django() -> None:
 
     try:
         from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
         LoggingInstrumentor().instrument(set_logging_format=True)
         logger.debug("Logging-Instrumentierung aktiv (trace_id in Logs)")
     except Exception as exc:

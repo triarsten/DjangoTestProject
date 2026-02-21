@@ -3,6 +3,7 @@ Gunicorn Konfiguration.
 Werte können per Umgebungsvariable überschrieben werden (siehe entrypoint.sh).
 Diese Datei dient als Dokumentation der verfügbaren Optionen.
 """
+
 import multiprocessing
 import os
 
@@ -25,9 +26,11 @@ max_requests_jitter = int(os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "100"))
 
 # Logging
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
-accesslog = "-"   # stdout
-errorlog = "-"    # stderr
-access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sus'
+accesslog = "-"  # stdout
+errorlog = "-"  # stderr
+access_log_format = (
+    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sus'
+)
 
 # Prozess-Name
 proc_name = "djangotestproject"
@@ -36,6 +39,7 @@ proc_name = "djangotestproject"
 # =============================================================================
 # Server Hooks
 # =============================================================================
+
 
 def post_fork(_server, worker):
     """
@@ -46,14 +50,20 @@ def post_fork(_server, worker):
     fork-safe und würden sonst zwischen Workers geteilt werden.
     """
     import logging
+
     logger = logging.getLogger("gunicorn.error")
 
     try:
         from config.telemetry import configure_opentelemetry
+
         configure_opentelemetry()
         logger.info("[worker %s] OpenTelemetry initialisiert", worker.pid)
     except Exception as exc:
-        logger.warning("[worker %s] OpenTelemetry-Initialisierung fehlgeschlagen: %s", worker.pid, exc)
+        logger.warning(
+            "[worker %s] OpenTelemetry-Initialisierung fehlgeschlagen: %s",
+            worker.pid,
+            exc,
+        )
 
 
 def worker_exit(_server, worker):  # pyright: ignore[reportUnusedParameter]
@@ -63,6 +73,7 @@ def worker_exit(_server, worker):  # pyright: ignore[reportUnusedParameter]
     Flusht ausstehende Spans und Metrics damit keine Telemetrie-Daten verloren gehen.
     """
     import logging
+
     logger = logging.getLogger("gunicorn.error")
 
     try:
@@ -80,4 +91,6 @@ def worker_exit(_server, worker):  # pyright: ignore[reportUnusedParameter]
 
         logger.info("[worker %s] OpenTelemetry sauber heruntergefahren", worker.pid)
     except Exception as exc:
-        logger.warning("[worker %s] OpenTelemetry-Shutdown fehlgeschlagen: %s", worker.pid, exc)
+        logger.warning(
+            "[worker %s] OpenTelemetry-Shutdown fehlgeschlagen: %s", worker.pid, exc
+        )
