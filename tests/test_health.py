@@ -24,3 +24,16 @@ def test_health_content_type(client):
     response = client.get("/health/")
 
     assert "application/json" in response.headers["Content-Type"]
+
+
+def test_health_reachable_with_disallowed_host(client):
+    """
+    /health/ muss auch dann antworten, wenn der Host-Header nicht in
+    ALLOWED_HOSTS steht (z.B. kubelet schickt Pod-IP als Host).
+    HealthCheckMiddleware fängt die Anfrage vor SecurityMiddleware ab.
+    """
+    response = client.get("/health/", headers={"host": "192.168.178.99"})
+
+    # Kein 400 DisallowedHost – die Middleware hat den Request durchgelassen
+    assert response.status_code in (200, 503)
+    assert "application/json" in response.headers["Content-Type"]

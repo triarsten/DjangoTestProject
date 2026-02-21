@@ -18,6 +18,12 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+ENVIRONMENT = env("ENVIRONMENT", default="production")
+
+# Im Staging-Umfeld alle Hosts erlauben, damit K8s-Probes unabhängig
+# vom HTTP Host-Header funktionieren (Pod-IPs sind dynamisch).
+if ENVIRONMENT == "staging":
+    ALLOWED_HOSTS = ["*"]
 
 # ---------------------------------------------------------------------------
 # Applications
@@ -38,6 +44,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # Prometheus: must be first and last
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    # Muss vor SecurityMiddleware stehen: leitet /health/ direkt weiter,
+    # bevor der ALLOWED_HOSTS-Check den Request abbricht.
+    "apps.health.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
