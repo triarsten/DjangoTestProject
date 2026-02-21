@@ -29,15 +29,13 @@ def configure_opentelemetry() -> None:
 def _configure_tracing() -> None:
     """Traces → Tempo via OTLP/gRPC."""
     from opentelemetry import trace
+    from opentelemetry.sdk.resources import SERVICE_NAME, SERVICE_VERSION, Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     if not endpoint:
-        logger.warning(
-            "OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt – Traces werden verworfen"
-        )
+        logger.warning("OTEL_EXPORTER_OTLP_ENDPOINT nicht gesetzt – Traces werden verworfen")
         return
 
     resource = Resource.create(
@@ -79,7 +77,7 @@ def _configure_metrics() -> None:
     from opentelemetry import metrics
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-    from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     if not endpoint:

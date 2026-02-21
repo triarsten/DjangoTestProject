@@ -28,9 +28,7 @@ max_requests_jitter = int(os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "100"))
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 accesslog = "-"  # stdout
 errorlog = "-"  # stderr
-access_log_format = (
-    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sus'
-)
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sus'
 
 # Prozess-Name
 proc_name = "djangotestproject"
@@ -77,7 +75,7 @@ def worker_exit(_server, worker):  # pyright: ignore[reportUnusedParameter]
     logger = logging.getLogger("gunicorn.error")
 
     try:
-        from opentelemetry import trace, metrics
+        from opentelemetry import metrics, trace
 
         # Traces flushen
         tracer_provider = trace.get_tracer_provider()
@@ -91,6 +89,4 @@ def worker_exit(_server, worker):  # pyright: ignore[reportUnusedParameter]
 
         logger.info("[worker %s] OpenTelemetry sauber heruntergefahren", worker.pid)
     except Exception as exc:
-        logger.warning(
-            "[worker %s] OpenTelemetry-Shutdown fehlgeschlagen: %s", worker.pid, exc
-        )
+        logger.warning("[worker %s] OpenTelemetry-Shutdown fehlgeschlagen: %s", worker.pid, exc)
